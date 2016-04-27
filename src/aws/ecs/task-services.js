@@ -10,7 +10,7 @@ const SERVICE_POLL_DELAY = 15 * 1000;
 const Q = require('q');
 const R = require('ramda');
 const util = require('../../util');
-const awsUtil = require('../aws-util');
+const awsCommon = require('../common');
 
 const taskDefinitions = require('./task-definitions');
 
@@ -49,7 +49,7 @@ module.exports = {
  * @returns {Object} this API bound to
  */
 function bindAws(aws) {
-  return awsUtil.bindAws(aws, module.exports);
+  return awsCommon.bindAws(aws, module.exports);
 }
 
 /**

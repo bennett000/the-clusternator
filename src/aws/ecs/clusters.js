@@ -9,7 +9,7 @@ const Q = require('q');
 
 const common = require('../common');
 const util = require('../../util');
-const awsUtil = require('../aws-util');
+const awsCommon = require('../common');
 const taskServices = require('./task-services');
 
 module.exports = {
@@ -36,7 +36,7 @@ module.exports = {
  * @returns {Object} this API bound to
  */
 function bindAws(aws) {
-  return awsUtil.bindAws(aws, module.exports);
+  return awsCommon.bindAws(aws, module.exports);
 }
 
 /**

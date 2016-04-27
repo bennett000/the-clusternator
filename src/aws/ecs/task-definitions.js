@@ -7,7 +7,6 @@
 const R = require('ramda');
 const common = require('../common');
 const util = require('../../util');
-const awsUtil = require('../aws-util');
 
 module.exports = {
   bindAws,
@@ -31,7 +30,7 @@ module.exports = {
  * @returns {Object} this API bound to
  */
 function bindAws(aws) {
-  return awsUtil.bindAws(aws, module.exports);
+  return common.bindAws(aws, module.exports);
 }
 
 /**
