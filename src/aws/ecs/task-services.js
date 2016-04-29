@@ -12,7 +12,8 @@ const R = require('ramda');
 const util = require('../../util');
 const awsCommon = require('../common');
 
-const taskDefinitions = require('./task-definitions');
+// let instead of const for testing purposes
+let taskDefinitions = require('./task-definitions');
 
 /**
  * In repl, the helper methods won't be bound properly
@@ -28,19 +29,26 @@ module.exports = {
   describeMany,
   destroy: findAndDestroy,
   list,
+  resolveIfDrained,
+  resolveIfReady,
   stop,
   stopAndDestroy, // NOTE: No find method used
   stopAndDestroyCluster, // NOTE: No find method used
   update,
+  waitForDrained,
+  waitForPredicate,
+  waitForReady,
   helpers: {
     checkForInactive,
     create,
     destroy,
     getStatus,
-    processDescription, // NOTE: Moved from clusterManager
-    processDescriptions, // NOTE: Moved from clusterManager
-    waitForDrained, // NOTE: not tested
-    waitForReady, // NOTE: not tested
+    processDescription,
+    processDescriptions,
+    throwIfNotDrained,
+    throwIfNotReady,
+    waitForDrained,
+    waitForReady, 
   }
 };
 
@@ -68,8 +76,8 @@ function create(aws, cluster, serviceName, taskDefinition) {
     throw new TypeError('create requires a serviceName');
   }
   if(!taskDefinition) {
-    throw new TypeError('create requires task definition'
-      + ' family:revision or ARN');
+    throw new TypeError('create requires task definition' + 
+      ' family:revision or ARN');
   }
 
   function promiseToCreate() {
@@ -100,8 +108,8 @@ function findOrCreate(aws, cluster, serviceName, taskDefinitionArn) {
   function promiseToFindOrCreate() {
     return describeMany(aws, cluster, [serviceName])()
       .then((services) =>
-        R.find(R.propEq('taskDefinition', taskDefinitionArn), services)
-          || create(aws, cluster, serviceName, taskDefinitionArn)()
+        R.find(R.propEq('taskDefinition', taskDefinitionArn), services) ||
+        create(aws, cluster, serviceName, taskDefinitionArn)()
       );
   }
 
@@ -116,7 +124,6 @@ function checkForInactive(services) {
   return services[0].status === 'INACTIVE';
 }
 
-// TODO refactor this to be elsewhere
 /**
  * This is the cool part.
  * cluster isn't actually an ARN?
@@ -128,14 +135,9 @@ function checkForInactive(services) {
  * @returns {function(): Promise.<Object>} service
  */
 function createTaskAndService(aws, cluster, serviceName, task) {
-  if(!cluster) {
-    throw new TypeError('createTaskAndService requires a cluster name or ARN');
-  }
-  if(!serviceName) {
-    throw new TypeError('createTaskAndService requires a serviceName');
-  }
-  if(!task) {
-    throw new TypeError('createTaskAndService requires a task object');
+  if(!cluster || !serviceName || !task) {
+    throw new TypeError('createTaskAndService requires a clusterName, ' +
+      'serviceName, and task object');
   }
 
   function waitForReady_(service) {
@@ -143,13 +145,12 @@ function createTaskAndService(aws, cluster, serviceName, task) {
   }
 
   function promiseToCreateTaskAndService() {
-    taskDefinitions.create(aws, task)()
+    return taskDefinitions.create(aws, task)()
       .then((taskDef) => {
         util.info('Created task', taskDef.taskDefinitionArn);
         return create(aws, cluster, serviceName, taskDef.taskDefinitionArn)();
       })
-      .then(waitForReady_)
-      .fail(Q.reject);
+      .then(waitForReady_);
   }
 
   return promiseToCreateTaskAndService;
@@ -167,8 +168,8 @@ function createTaskAndService(aws, cluster, serviceName, task) {
  */
 function createTasksAndServices(aws, cluster, serviceName, appDef) {
   if(!cluster) {
-    throw new TypeError('createTasksAndServices requires '
-      + 'a cluster name or ARN');
+    throw new TypeError('createTasksAndServices requires ' + 
+      'a cluster name or ARN');
   }
   if(!serviceName) {
     throw new TypeError('createTasksAndServices requires a serviceName');
@@ -176,11 +177,12 @@ function createTasksAndServices(aws, cluster, serviceName, appDef) {
   if(!appDef || !appDef.tasks) {
     throw new TypeError('createTasksAndServices requires a appDef object');
   }
+  
+  function createTaskAndService_(task) {
+    return createTaskAndService(aws, cluster, serviceName, task)();
+  }
 
   function promiseToCreateTasksAndServices() {
-    function createTaskAndService_(task) {
-      return createTaskAndService(aws, cluster, serviceName, task)();
-    }
 
     const taskDefPromises = R.map(createTaskAndService_, appDef.tasks);
 
@@ -275,9 +277,9 @@ function findAndDestroy(aws, cluster, service) {
   function promiseToFindAndDestroy() {
     return describeMany(aws, cluster, [service])()
       .then((services) =>
-        services && services.length
-          ? destroy(aws, cluster, service)()
-          : 'already deleted'
+        services && services.length ? 
+          destroy(aws, cluster, service)() : 
+          'already deleted'
       );
   }
 
@@ -392,17 +394,14 @@ function stop(aws, cluster, service) {
  * @returns {function(): Promise.<string>}
  */
 function stopAndDestroy(aws, cluster, service) {
-  if(!cluster) {
-    throw new TypeError('stopAndDestroy requires a cluster name or ARN');
-  }
-  if(!service) {
-    throw new TypeError('stopAndDestroy requires a service name or ARN');
+  if(!cluster || !service) {
+    throw new TypeError('stopAndDestroy requires a cluster and service');
   }
 
   function promiseToStopAndDestroy() {
-    return stop(aws, cluster, service)
+    return stop(aws, cluster, service)()
       // no need for findAndDestroy since this comes from a list already
-      .then((service) => destroy(aws, cluster, service.service));
+      .then((s) => destroy(aws, cluster, s.service));
   }
 
   return promiseToStopAndDestroy;
@@ -416,7 +415,7 @@ function stopAndDestroy(aws, cluster, service) {
  * @returns {function(): Promise.<Object>} service
  */
 function stopAndDestroyCluster(aws, cluster) {
-  if(!cluster) {
+  if (!cluster) {
     throw new TypeError('stopAndDestroyCluster requires a cluster name or ARN');
   }
 
@@ -429,8 +428,7 @@ function stopAndDestroyCluster(aws, cluster) {
 
         return Q.all(stopAndDestroyPromises)
           .then(() => waitForDrained(aws, cluster, serviceArns)());
-      })
-      .fail(Q.reject);
+      });
   }
 
   return promiseToStopAndDestroyCluster;
@@ -470,87 +468,123 @@ function update(aws, cluster, service, updateObj) {
 }
 
 /**
+ * @param {object} services
+ * @throws {Error}
+ */
+function throwIfNotDrained(services) {
+  const isInactive = checkForInactive(services);
+  if (isInactive) {
+    util.info('Service has drained');
+  } else {
+    throw new Error('Service is draining');
+  }
+}
+
+/**
+ * @param {AwsWrapper} aws
+ * @param {string} cluster
+ * @param {Object} services
+ * @returns {function(): Promise}
+ * @throws {TypeError}
+ */
+function resolveIfDrained(aws, cluster, services) {
+  if (!cluster || !services) {
+    throw new TypeError('waitForDrained requires cluster name and services');
+  }
+  
+  function promiseToResolveIfDrained() {
+    return describeMany(aws, cluster, services)()
+      .then(throwIfNotDrained);
+  } 
+  return promiseToResolveIfDrained;
+}
+
+/**
  * @param {AwsWrapper} aws
  * @param {string} cluster Name or ARN
  * @param {string[]} services Names or ARNs
- * @returns {Promise.<Object[]>} services
+ * @returns {function(): Promise} services
+ * @throws {TypeError}
  */
 function waitForDrained(aws, cluster, services) {
-  if (!cluster) {
-    throw new TypeError('waitForDrained requires cluster name or ARN');
+  if (!cluster || !services) {
+    throw new TypeError('waitForDrained requires cluster name and services');
   }
-  if (!services) {
-    throw new TypeError('waitForDrained requires array of service name or ARN');
+  
+  const predicate = resolveIfDrained(aws, cluster, services);
+
+  return waitForPredicate(predicate);
+}
+
+/**
+ * @param services
+ * @returns {*}
+ * @throws {Error}
+ */
+function throwIfNotReady(services) {
+  const status = getStatus(services);
+  // @todo we need to some how die if this happens
+  if (status < 0) {
+    throw new Error('Error polling new service');
   }
-
-  function promiseToWaitForDrained() {
-    const d = Q.defer();
-
-    describeMany(aws, cluster, services)()
-      .then((services) => {
-
-        const isInactive = checkForInactive(services);
-        if (isInactive) {
-          util.info('Service has drained');
-          d.resolve();
-        } else {
-          util.info('Service is draining');
-
-          setTimeout(() => {
-            waitForDrained(cluster, services)()
-              .then(d.resolve, d.reject);
-          }, SERVICE_POLL_DELAY);
-        }
-
-      })
-      .fail(d.reject);
-
-    return d.promise;
+  // valid case
+  if (status === 0) {
+    util.info('Service has reached a steady state');
+    return services;
   }
+  // fail
+  throw new Error('Service not ready yet');
+}
 
-  return promiseToWaitForDrained;
+/**
+ * @param {AwsWrapper} aws
+ * @param {string} cluster
+ * @param {Array} services
+ * @returns {function(): Promise}
+ * @throws {TypeError}
+ */
+function resolveIfReady(aws, cluster, services) {
+  if (!cluster || !services) {
+    throw new TypeError('resolveIfReady requires cluster name and service');
+  }
+  function promiseToResolveIfReady() {
+    return describeMany(aws, cluster, services)()
+      .then(throwIfNotReady);
+  }
+  return promiseToResolveIfReady;
 }
 
 /**
  * @param {AwsWrapper} aws
  * @param {string} cluster name or ARN
- * @param {string[]} services Names or ARNs
+ * @param {Array} services Names or ARNs
  * @returns {function(): Promise.<Object[]>} services
+ * @throws {TypeError}
  */
 // alternative name: waitForReady
 function waitForReady(aws, cluster, services) {
-  if (!cluster) {
-    throw new TypeError('waitForDrained requires cluster name or ARN');
+  if (!cluster || !services) {
+    throw new TypeError('waitForReady requires cluster name and service');
   }
-  if (!services) {
-    throw new TypeError('waitForDrained requires array of service name or ARN');
-  }
+  const predicate = resolveIfReady(aws, cluster, services);
+  
+  return waitForPredicate(predicate);
+}
 
-  function promiseToWaitForReady() {
-    const d = Q.defer();
-
-    describeMany(aws, cluster, services)()
-      .then((services) => {
-
-        const status = getStatus(services);
-        if (status < 0) {
-          d.reject(new Error('Error polling new service: ' +
-            `cluster: ${cluster}, service: ${services}`));
-        } else if (status === 0) {
-          util.info('Service has reached a steady state');
-          d.resolve(services);
-        } else {
-          setTimeout(() => {
-            waitForReady(aws, cluster, services)()
-              .then(d.resolve, d.reject);
-          }, SERVICE_POLL_DELAY);
-        }
-
-      })
-      .fail(d.reject);
-
-    return d.promise;
-  }
-
-  return promiseToWaitForReady;
+/**
+ * @param {function(): Promise} predicate
+ * @returns {function(): Promise}
+ * @throws {TypeError}
+ */
+function waitForPredicate(predicate) {
+  if (typeof predicate !== 'function') {
+    throw new TypeError('waitForPreducate requires a function');
+  } 
+  
+  function promiseToWaitForPredicate() {
+    // @todo use max parameter 
+    // so this doesn't hang if the service fails to start or drain
+    return util.waitFor(predicate, SERVICE_POLL_DELAY);   
+  } 
+  return promiseToWaitForPredicate;
 }
