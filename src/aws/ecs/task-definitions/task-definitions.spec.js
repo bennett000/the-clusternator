@@ -23,7 +23,7 @@ function initData() {
     registerTaskDefinition: () => Q.resolve(
       {taskDefinition: CALLED.registerTaskDefinition}),
     describeTaskDefinition: () => Q.resolve(
-      {taskDefinition: CALLED.describeTaskDefinition}),
+      { taskDefinition: { status: 'ACTIVE', revision: 72 } }),
     deregisterTaskDefinition: () => Q.resolve(true),
     listTaskDefinitions: () => Q.resolve(
       {taskDefinitionArns: [
@@ -58,8 +58,8 @@ describe('AWS: ECS: Task Definitions', () => {
 
   describe('describeOne function', () => {
     it('should call ecs.describeTaskDefinition', checkAsync(
-      td.describeOne(aws, {taskDefinition: true}),
-      (r) => expect(r).to.equal(CALLED.describeTaskDefinition)
+      td.describeOne(aws, { taskDefinition: true }),
+      (r) => expect(r).to.deep.equal({ status: 'ACTIVE', revision: 72 })
     ));
 
     it('should throw without taskDef param', () => {
@@ -69,7 +69,8 @@ describe('AWS: ECS: Task Definitions', () => {
     it('should resolve even if describe fails', (done) => {
       aws.ecs.describeTaskDefinition = () => Q.reject(new Error('test'));
       td.describeOne(aws, 'name')()
-        .then((r) => C.check(done, () => expect(r).to.deep.equal([])))
+        .then((r) => C.check(done, () => expect(r)
+          .to.deep.equal({ status: 'INACTIVE' })))
         .fail(C.getFail(done));
     });
   });
@@ -96,16 +97,16 @@ describe('AWS: ECS: Task Definitions', () => {
   });
 
   describe('findAndDestroy function', () => {
-    it('should destroy taskDefinition when found', checkAsync(
-      td.destroy(aws, {taskDefinition: true}),
+    it('should destroy taskDefinition when found (I)', checkAsync(
+      td.destroy(aws, { taskDefinition: { status: 'ACTIVE', revision: 99 } }),
       (r) => expect(r).to.equal(CALLED.deregisterTaskDefinition)
     ));
 
-    it('should destroy taskDefinition when found', checkAsync(
+    it('should destroy taskDefinition when found (II)', checkAsync(
       () => {
         aws.ecs.describeTaskDefinition = () =>
-          Q.resolve({taskDefinition: false});
-        return td.destroy(aws, {taskDefinition: true})();
+          Q.resolve({ taskDefinition: { status: 'INACTIVE' } });
+        return td.destroy(aws, 'destroyer')();
       },
       (r) => expect(r).to.equal('already deleted')
     ));

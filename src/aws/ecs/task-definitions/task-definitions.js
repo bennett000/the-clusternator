@@ -19,6 +19,7 @@ module.exports = {
   // NOTE: `describe` and `create` don't take some params.
   // Can't implement findOrCreate
   create,
+  describe: describeOne,
   describeOne,
   destroy: findAndDestroy,
   list,
@@ -68,7 +69,7 @@ function create(aws, taskDef) {
  * Describes one task definition
  * @params {AwsWrapper} aws
  * @params {string} taskDefinition family:revision or ARN
- * @return {function(): Promise.<string[]>}
+ * @return {function(): Promise.<{ status: string, revision: number }>}
  */
 function describeOne(aws, taskFamily) {
   if(!taskFamily) {
@@ -80,7 +81,7 @@ function describeOne(aws, taskFamily) {
       taskDefinition: taskFamily
       })
       .then(R.prop('taskDefinition'))
-      .fail(() => []);
+      .fail(() => ({ status: 'INACTIVE' }));
   }
 
   return promiseToDescribeOne;
@@ -116,8 +117,8 @@ function findAndDestroy(aws, taskFamily) {
 
   function promiseToFindAndDestroy() {
     return describeOne(aws, taskFamily)()
-      .then((taskDefObj) => taskDefObj ? 
-        destroy(aws, taskFamily)() : 
+      .then((taskDefObj) => taskDefObj && taskDefObj.status === 'ACTIVE' ? 
+        destroy(aws, taskFamily + ':' + taskDefObj.revision)() : 
         'already deleted'
       );
   }
