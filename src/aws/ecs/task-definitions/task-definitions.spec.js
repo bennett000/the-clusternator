@@ -65,6 +65,13 @@ describe('AWS: ECS: Task Definitions', () => {
     it('should throw without taskDef param', () => {
       expect(() => td.describeOne(aws, null)).to.throw(TypeError);
     });
+    
+    it('should resolve even if describe fails', (done) => {
+      aws.ecs.describeTaskDefinition = () => Q.reject(new Error('test'));
+      td.describeOne(aws, 'name')()
+        .then((r) => C.check(done, () => expect(r).to.deep.equal([])))
+        .fail(C.getFail(done));
+    });
   });
 
   describe('destroy function', () => {
