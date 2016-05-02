@@ -72,9 +72,9 @@ function findOrCreate(aws, clusterName) {
   function promiseToFindOrCreate() {
     return describeMany(aws, [clusterName])()
       .then((clusters) =>
-        clusters && clusters.length
-          ? clusters[0]
-          : create(aws, clusterName)()
+        clusters && clusters.length ? 
+          clusters[0] : 
+          create(aws, clusterName)()
       );
   }
 
@@ -116,8 +116,8 @@ function describeOne(aws, cluster) {
  */
 function describeMany(aws, clusters) {
   if (!clusters || !clusters.length) {
-    throw new TypeError('describeMany requires '
-      + 'an array of cluster name or ARN');
+    throw new TypeError('describeMany requires ' + 
+      'an array of cluster name or ARN');
   }
 
   function promiseToDescribeMany() {
@@ -234,9 +234,9 @@ function findAndDestroy(aws, cluster) {
   function promiseToFindAndDestroy() {
     return describeMany(aws, [cluster])()
       .then((clusters) =>
-        clusters && clusters.length
-          ? destroy(aws, cluster)()
-          : 'already deleted'
+        clusters && clusters.length ? 
+          destroy(aws, cluster)() : 
+          'already deleted'
       );
   }
 

@@ -4,8 +4,10 @@ const Q = require('q');
 const rewire = require('rewire');
 
 const td = rewire('./task-definitions');
-const C = require('../../chai');
+const C = require('../../../chai');
 const checkAsync = C.checkAsync;
+const TaskDefinition = 
+  require('./task-definition').TaskDefinition;
 
 const aws = {};
 
@@ -40,13 +42,18 @@ describe('AWS: ECS: Task Definitions', () => {
 
   describe('create function', () => {
     it('should call ecs.registerTaskDefinition', checkAsync(
-      td.create(aws, {taskDefinition: {}}),
+      td.create(aws, { family: 'test' }),
       (r) => expect(r).to.equal(CALLED.registerTaskDefinition)
     ));
 
     it('should throw without taskDef param', () => {
       expect(() => td.create(aws, null)).to.throw(TypeError);
     });
+    
+    it('should accept a container definition object', checkAsync(
+      td.create(aws, TaskDefinition('family')),
+      (r) => expect(r).to.equal(CALLED.registerTaskDefinition)
+    ));
   });
 
   describe('describeOne function', () => {
@@ -68,6 +75,16 @@ describe('AWS: ECS: Task Definitions', () => {
 
     it('should throw without taskDef', () => {
       expect(() => td.helpers.destroy(aws, null)).to.throw(TypeError);
+    });
+  });
+
+  describe('bindAws function', () => {
+    it('should be able to call without explicitly passing aws', (done) => {
+      const tdb = td.bindAws(aws);
+      tdb.destroy('test')()
+        .then((r) => C.check(done, () => expect(r)
+          .to.equal(CALLED.deregisterTaskDefinition)))
+        .fail(C.getFail(done));
     });
   });
 

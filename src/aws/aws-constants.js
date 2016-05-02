@@ -30,7 +30,9 @@ const EXPORTS = {
   AWS_RETRY_LIMIT: 3,
   AWS_RETRY_MULTIPLIER: 3,
   ALT_TAG: '-alt',
-  CIDR_BLOCK: '10.0.0.0/16'
+  CIDR_BLOCK: '10.0.0.0/16',
+  ECS_TASK_MIN_MEMORY: 5,
+  ECS_TASK_DEFAULT_MEMORY: 512,
 };
 
 module.exports = util.deepFreeze(EXPORTS);

@@ -13,7 +13,7 @@ const util = require('../../util');
 const awsCommon = require('../common');
 
 // let instead of const for testing purposes
-let taskDefinitions = require('./task-definitions');
+let taskDefinitions = require('./task-definitions/task-definitions');
 
 /**
  * In repl, the helper methods won't be bound properly

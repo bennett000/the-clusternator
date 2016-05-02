@@ -38,7 +38,7 @@ module.exports = {
   setup: require('./setup'),
   subnet: require('./subnet.spec'),
   task: require('./task.spec'),
-  taskDefinition: require('./taskDefinition.spec'),
+  taskDefinition: require('./task-definition.spec.js'),
   vpc: require('./vpc.spec'),
   iam: require('./iam.spec'),
   log: logOutput,

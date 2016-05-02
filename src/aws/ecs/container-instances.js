@@ -64,9 +64,9 @@ function findOrCreate(aws, cluster, instanceArn) {
   function promiseToFindOrCreate() {
     return describeMany(aws, cluster, [instanceArn])()
       .then((instances) =>
-        instances && instances.length
-          ? instances[0]
-          : create(aws, cluster, instanceArn)()
+        instances && instances.length ? 
+          instances[0] : 
+          create(aws, cluster, instanceArn)()
       );
   }
 
@@ -155,9 +155,9 @@ function findAndDestroy(aws, cluster, containerInstance) {
   function promiseToFindAndDestroy() {
     return describeMany(aws, cluster, [containerInstance])()
       .then((instances) =>
-        instances && instances.length
-          ? destroy(aws, cluster, containerInstance)()
-          : 'already deleted'
+        instances && instances.length ? 
+          destroy(aws, cluster, containerInstance)() : 
+          'already deleted'
       );
   }
 

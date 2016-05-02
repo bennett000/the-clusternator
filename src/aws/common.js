@@ -396,7 +396,7 @@ function setSubnet(subnet, creq) {
 
 /**
  * @param {string} projectId
- * @param {string} deploymnet
+ * @param {string} deployment
  * @returns {function(...):boolean}
  */
 function getDeploymentFilter(projectId, deployment) {

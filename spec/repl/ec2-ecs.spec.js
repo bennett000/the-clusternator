@@ -12,7 +12,7 @@ function awsEc2Partial(fn) {
   if (typeof fn !== 'function'){
     return;
   }
-  return R.partial(fn, { 
+  return util.partial(fn, { 
     ec2: util.makePromiseApi(setup.getEc2()), 
     vpcId: setup.testVPC
   });

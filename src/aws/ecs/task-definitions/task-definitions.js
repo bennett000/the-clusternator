@@ -2,11 +2,17 @@
 /**
  * Simplifies dealing with AWS task definitions
  *
- * @module aws/taskDefinitionManager
+ * @module aws/task-definitions/task-definitions
+ *
+ * @typedef {{ family: string } | string | TaskDefinition} TDParam
  */
 const R = require('ramda');
-const common = require('../common');
-const util = require('../../util');
+const common = require('../../common');
+const util = require('../../../util');
+const TaskDefinition = 
+  require('./task-definition').TaskDefinition;
+const ContainerDefinition =
+  require('./container-definition').ContainerDefinition;
 
 module.exports = {
   bindAws,
@@ -21,7 +27,7 @@ module.exports = {
   listDeployment,
   listFamilies,
   helpers: {
-    destroy
+    destroy,
   }
 };
 
@@ -36,13 +42,11 @@ function bindAws(aws) {
 /**
  * Registers task definition
  * @params {AwsWrapper} aws
- * @params {Object} taskDef
+ * @param {TDParam} taskDef
  * @return {function(): Promise.<Object>}
  */
 function create(aws, taskDef) {
-  if(!taskDef) {
-    throw new TypeError('create requires a configuration object');
-  }
+  taskDef = TaskDefinition(taskDef);
 
   function promiseToCreate() {
     return aws.ecs.registerTaskDefinition(taskDef)
@@ -55,7 +59,7 @@ function create(aws, taskDef) {
 /**
  * Finds or registers task definition
  * @params {AwsWrapper} aws
- * @params {Object} taskDef
+ * @params {string} taskFamily
  * @return {function(): Promise.<Object>}
  */
 // function findOrCreate(aws, taskDef) {}
@@ -63,19 +67,20 @@ function create(aws, taskDef) {
 /**
  * Describes one task definition
  * @params {AwsWrapper} aws
- * @params {Object} taskDefinition family:revision or ARN
+ * @params {string} taskDefinition family:revision or ARN
  * @return {function(): Promise.<string[]>}
  */
-function describeOne(aws, taskDefinition) {
-  if(!taskDefinition) {
+function describeOne(aws, taskFamily) {
+  if(!taskFamily) {
     throw new TypeError('describeOne requires a configuration object');
   }
     
   function promiseToDescribeOne() {
     return aws.ecs.describeTaskDefinition({
-      taskDefinition: taskDefinition
-    })
-    .then(R.prop('taskDefinition'));
+      taskDefinition: taskFamily
+      })
+      .then(R.prop('taskDefinition'))
+      .fail(() => []);
   }
 
   return promiseToDescribeOne;
@@ -84,17 +89,17 @@ function describeOne(aws, taskDefinition) {
 /**
  * Deregisters task definition
  * @params {AwsWrapper} aws
- * @params {Object} taskDef
- * @return {Q.Promise.<string[]>}
+ * @params {string} familyName
+ * @return {Promise.<string>}
  */
-function destroy(aws, taskDef) {
-  if(!taskDef) {
+function destroy(aws, familyName) {
+  if(!familyName) {
     throw new TypeError('destroy requires a configuration object');
   }
 
   function promiseToDestroy() {
     return aws.ecs.deregisterTaskDefinition({
-      taskDefinition: taskDef
+      taskDefinition: familyName
     })
     .then(() => 'deleted');
   }
@@ -102,13 +107,18 @@ function destroy(aws, taskDef) {
   return promiseToDestroy;
 }
 
-function findAndDestroy(aws, taskDef) {
+/**
+ * @param {AwsWrapper} aws
+ * @param {string} taskFamily
+ * @returns {promiseToFindAndDestroy}
+ */
+function findAndDestroy(aws, taskFamily) {
 
   function promiseToFindAndDestroy() {
-    return describeOne(aws, taskDef)()
-      .then((taskDefObj) => taskDefObj
-        ? destroy(aws, taskDef)()
-        : 'already deleted'
+    return describeOne(aws, taskFamily)()
+      .then((taskDefObj) => taskDefObj ? 
+        destroy(aws, taskFamily)() : 
+        'already deleted'
       );
   }
 
@@ -118,7 +128,7 @@ function findAndDestroy(aws, taskDef) {
 /**
  * List all task definitions
  * @params {AwsWrapper} aws
- * @return {Q.Promise.<string[]>}
+ * @return {Promise.<string[]>}
  */
 function list(aws) {
   function promiseToList() {
@@ -148,7 +158,7 @@ function listFamilies(aws) {
 /**
  * @params {AwsWrapper} aws
  * @param {string} projectId
- * @returns {Request|Promise.<T>}
+ * @returns {Promise.<T>}
  */
 function listProject(aws, projectId) {
   if(!projectId) {
