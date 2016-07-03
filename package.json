@@ -90,7 +90,7 @@
     "gulp-plumber": "^1.0.1",
     "gulp-util": "^3.0.7",
     "jsdoc": "^3.4.0",
-    "madge": "^0.5.3",
+    "madge": "^0.5.5",
     "mocha": "^2.3.3",
     "mock-fs": "^3.9.0",
     "mock-spawn": "^0.2.6",
