@@ -51,7 +51,7 @@
   "license": "MIT",
   "dependencies": {
     "aws-sdk": "^2.3.11",
-    "base64url": "^1.0.5",
+    "base64url": "^2.0.0",
     "body-parser": "^1.15.1",
     "body-parser-rawbody": "^1.13.2",
     "compression": "^1.6.2",
