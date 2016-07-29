@@ -93,7 +93,7 @@
     "nodemon": "^1.9.2",
     "rewire": "^2.3.4",
     "sinon": "^1.17.4",
-    "supertest": "^1.1.0"
+    "supertest": "^2.0.0"
   },
   "eslintConfig": {
     "env": {
