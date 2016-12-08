@@ -63,7 +63,7 @@
     "inquirer": "^1.0.0",
     "media-typer": "^0.3.0",
     "mkdirp": "^0.5.1",
-    "parse-git-config": "^0.3.1",
+    "parse-git-config": "^1.1.0",
     "passport": "^0.3.2",
     "passport-http-header-token": "^1.0.0",
     "passport-local": "^1.0.0",
