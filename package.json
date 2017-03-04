@@ -56,7 +56,7 @@
     "body-parser-rawbody": "^1.13.2",
     "compression": "^1.6.2",
     "connect-ensure-login": "^0.1.1",
-    "credential": "^0.2.6",
+    "credential": "^2.0.0",
     "deepmerge": "^0.2.10",
     "express": "^4.13.3",
     "express-winston": "^1.3.1",
