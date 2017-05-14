@@ -87,7 +87,7 @@
     "istanbul": "^0.4.3",
     "jsdoc": "^3.4.0",
     "madge": "^0.5.3",
-    "mocha": "^2.3.3",
+    "mocha": "^3.4.1",
     "mock-fs": "^3.9.0",
     "mock-spawn": "^0.2.6",
     "nodemon": "^1.9.2",
